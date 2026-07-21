@@ -14,7 +14,9 @@ pnpm run check-all
 pnpm audit --audit-level=moderate
 ```
 
-The repository pins pnpm 11.15.1 and verifies the frozen lockfile in CI. Supply-chain settings reject unreviewed dependency build scripts, packages published within the last 24 hours, trust downgrades, and exotic transitive dependency sources. If an update introduces a lifecycle script, review the exact package version before adding it to `allowBuilds` in `pnpm-workspace.yaml`.
+The repository pins pnpm 11.15.1, including its registry integrity hash, and verifies the frozen lockfile in CI. Node.js 24's bundled Corepack bootstraps and verifies that package-manager artifact without an additional setup Action. Supply-chain settings reject unreviewed dependency build scripts, packages published within the last 24 hours, trust downgrades, and exotic transitive dependency sources. If an update introduces a lifecycle script, review the exact package version before adding it to `allowBuilds` in `pnpm-workspace.yaml`.
+
+Node.js 25 and later do not bundle Corepack. Before upgrading the CI runtime beyond Node.js 24, re-evaluate the bootstrap path and pin any replacement installer by full commit SHA or verified artifact integrity.
 
 GitHub's published Dependabot compatibility table currently documents pnpm lockfile updates through pnpm 10, so a pnpm 11 lockfile update may fail even though the `npm` package ecosystem remains configured. If that happens, a maintainer should update dependencies locally with the pinned pnpm 11 version and let CI validate the result. Renovate is intentionally not added solely as a fallback, keeping the maintenance and token surface small.
 
