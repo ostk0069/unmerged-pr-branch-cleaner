@@ -1,0 +1,54 @@
+{
+  "name": "unmerged-pr-branch-cleaner",
+  "version": "0.1.0",
+  "description": "Safely delete branches from closed, unmerged pull requests.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "package": "rollup --config",
+    "build": "npm run package",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --runInBand",
+    "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "check:bundle": "node scripts/check-bundle.mjs",
+    "check-all": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run check:bundle",
+    "all": "npm run check-all",
+    "dependencies:check": "npm outdated"
+  },
+  "keywords": [
+    "github-actions",
+    "pull-request",
+    "branch",
+    "cleanup"
+  ],
+  "author": "ostk0069",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@actions/core": "^3.0.1",
+    "@actions/github": "^9.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.31.0",
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-typescript": "^12.1.4",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.15",
+    "eslint": "^9.31.0",
+    "globals": "^16.3.0",
+    "jest": "^30.0.5",
+    "prettier": "^3.6.2",
+    "rollup": "^4.46.2",
+    "rollup-plugin-esbuild": "^6.2.1",
+    "ts-jest": "^29.4.1",
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0"
+  }
+}
