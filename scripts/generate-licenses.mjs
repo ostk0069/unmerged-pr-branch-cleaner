@@ -1,38 +1,30 @@
-import { readFile, readdir, writeFile } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { execFileSync } from "node:child_process";
+import { readFile, writeFile } from "node:fs/promises";
 
-const lock = JSON.parse(await readFile("package-lock.json", "utf8"));
-const sections = [];
-for (const [path, metadata] of Object.entries(lock.packages)) {
-  if (!path.startsWith("node_modules/") || metadata.dev) continue;
-  const directory = path;
-  let entries;
-  try {
-    entries = await readdir(directory);
-  } catch {
-    throw new Error(
-      `Run npm ci before generating licenses (${directory} is missing).`,
-    );
-  }
-  const licenseFile = entries.find((entry) =>
-    /^(license|copying)(\.|$)/i.test(entry),
-  );
-  if (!licenseFile)
-    throw new Error(
-      `No license file found for ${metadata.name ?? basename(path)}.`,
-    );
-  const licenseText = (
-    await readFile(join(directory, licenseFile), "utf8")
-  ).trim();
-  const packageJson = JSON.parse(
-    await readFile(join(directory, "package.json"), "utf8"),
-  );
-  sections.push(
-    `## ${packageJson.name}@${packageJson.version}\n\nLicense: ${packageJson.license ?? "See text below"}\n\n${licenseText}`,
-  );
+import { buildThirdPartyNotices } from "./license-inventory.mjs";
+
+const pnpmExecutable = process.env.npm_execpath;
+if (!pnpmExecutable) {
+  throw new Error("Run this script through pnpm (pnpm run licenses).");
 }
-sections.sort();
-const output = `# Third-Party Notices\n\nThis distribution includes the following production dependencies.\n\n${sections.join("\n\n---\n\n")}\n`;
+
+const installedGraph = JSON.parse(
+  execFileSync(
+    process.execPath,
+    [pnpmExecutable, "list", "--prod", "--depth", "Infinity", "--json"],
+    {
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  ),
+);
+const rootPackage = JSON.parse(await readFile("package.json", "utf8"));
+const output = await buildThirdPartyNotices({
+  installedGraph,
+  projectRoot: process.cwd(),
+  expectedDirectDependencies: Object.keys(rootPackage.dependencies ?? {}),
+});
+
 const target = "THIRD_PARTY_NOTICES.md";
 if (process.argv.includes("--check")) {
   let current = "";
@@ -42,7 +34,7 @@ if (process.argv.includes("--check")) {
     // A missing notice file is reported as stale below.
   }
   if (current !== output) {
-    console.error(`${target} is stale. Run npm run licenses.`);
+    console.error(`${target} is stale. Run pnpm run licenses.`);
     process.exit(1);
   }
 } else {

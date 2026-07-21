@@ -19,7 +19,7 @@ async function readArtifacts() {
 }
 
 const before = await readArtifacts();
-const result = spawnSync("npm", ["run", "package"], {
+const result = spawnSync("pnpm", ["run", "package"], {
   stdio: "inherit",
   shell: process.platform === "win32",
 });

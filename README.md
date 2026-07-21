@@ -108,11 +108,14 @@ CI runs unit tests with mocked REST and GraphQL clients, including the expected-
 Node.js 24 is required.
 
 ```sh
-npm ci
-npm run check-all
+corepack enable pnpm
+pnpm install --frozen-lockfile
+pnpm run check-all
 ```
 
-`npm run package` regenerates committed `dist/index.js`. `npm run licenses` regenerates production dependency notices. See [CONTRIBUTING.md](CONTRIBUTING.md) for the release checklist.
+The package manager is pinned to pnpm 11.15.1. `pnpm run package` regenerates committed `dist/index.js`. `pnpm run licenses` regenerates production dependency notices. See [CONTRIBUTING.md](CONTRIBUTING.md) for the release checklist.
+
+Marketplace users do not install pnpm or project dependencies. GitHub Actions runs the committed `dist/index.js` bundle directly with Node.js 24, so this package-manager choice affects only contributors and CI.
 
 ## License
 

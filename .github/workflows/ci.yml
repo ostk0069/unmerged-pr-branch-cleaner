@@ -12,11 +12,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d # v6.0.5
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=moderate
       - name: Validate YAML syntax
         run: ruby -e 'require "yaml"; %w[action.yml .github/workflows/ci.yml .github/dependabot.yml .github/ISSUE_TEMPLATE/bug.yml .github/ISSUE_TEMPLATE/config.yml].each { |file| YAML.load_file(file) }'
       - name: Run actionlint 1.7.12 with verified release checksum
@@ -31,7 +34,7 @@ jobs:
           tar --extract --gzip --file "$RUNNER_TEMP/actionlint.tar.gz" \
             --directory "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color=false
-      - run: npm run check-all
+      - run: pnpm run check-all
       - name: Ensure bundled action is current
         run: git diff --exit-code -- dist
       - name: Ensure dependency notices are current
