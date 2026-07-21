@@ -1,13 +1,23 @@
+export interface PullRequestRepository {
+  full_name: string;
+}
+
 export interface PullRequestHead {
   ref: string;
   sha: string;
-  repo: { full_name: string } | null;
+  repo: PullRequestRepository | null;
+}
+
+export interface PullRequestBase {
+  ref: string;
+  repo: PullRequestRepository;
 }
 
 export interface PullRequest {
   merged_at: string | null;
+  closed_at: string | null;
   head: PullRequestHead;
-  base: { repo: { full_name: string } };
+  base: PullRequestBase;
 }
 
 export interface BranchInfo {
@@ -18,6 +28,8 @@ export interface BranchInfo {
 
 export interface RepositoryInfo {
   default_branch: string;
+  node_id: string;
+  fork: boolean;
 }
 
 export interface GitHubClient {
@@ -26,11 +38,16 @@ export interface GitHubClient {
     repo: string;
     state: "open" | "closed";
     head?: string;
+    base?: string;
   }): Promise<PullRequest[]>;
   listBranches(owner: string, repo: string): Promise<BranchInfo[]>;
   getRepository(owner: string, repo: string): Promise<RepositoryInfo>;
   getBranch(owner: string, repo: string, branch: string): Promise<BranchInfo>;
-  deleteBranch(owner: string, repo: string, branch: string): Promise<void>;
+  deleteBranchAtomically(params: {
+    repositoryId: string;
+    branch: string;
+    expectedSha: string;
+  }): Promise<void>;
 }
 
 export interface Logger {
@@ -43,6 +60,12 @@ export interface CleanerOptions {
   owner: string;
   repo: string;
   dryRun: boolean;
+  maxDeletions: number;
+  excludedBranches: string[];
+  minimumClosedAgeDays: number;
+  allowForkRepositories: boolean;
+  now?: () => Date;
+  sleep?: (milliseconds: number) => Promise<void>;
 }
 
 export interface BranchOutcome {
@@ -51,7 +74,9 @@ export interface BranchOutcome {
 }
 
 export interface CleanupResult {
+  candidateBranches: string[];
   deletedBranches: string[];
   skippedBranches: BranchOutcome[];
   failedBranches: BranchOutcome[];
+  fatalError?: string;
 }

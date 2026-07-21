@@ -1,0 +1,27 @@
+name: Bug report
+description: Report an incorrect or unsafe behavior
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Do not report security vulnerabilities here. Use private vulnerability reporting from the Security tab."
+  - type: input
+    id: version
+    attributes:
+      label: Action commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed and expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs and workflow
+      description: Remove tokens, secrets, and private repository information.
+    validations:
+      required: true

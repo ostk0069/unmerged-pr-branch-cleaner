@@ -15,3 +15,29 @@ export function parseRepository(value: string): {
   }
   return { owner: parts[0]!, repo: parts[1]! };
 }
+
+export function parseInteger(
+  value: string,
+  name: string,
+  minimum: number,
+): number {
+  if (!/^\d+$/.test(value.trim())) {
+    throw new Error(
+      `${name} must be an integer greater than or equal to ${minimum}.`,
+    );
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < minimum) {
+    throw new Error(
+      `${name} must be an integer greater than or equal to ${minimum}.`,
+    );
+  }
+  return parsed;
+}
+
+export function parsePatterns(value: string): string[] {
+  return value
+    .split(/[\n,]/)
+    .map((pattern) => pattern.trim())
+    .filter(Boolean);
+}

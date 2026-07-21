@@ -6,15 +6,18 @@ import type {
   RepositoryInfo,
 } from "./types.js";
 
+const ZERO_OID = "0".repeat(40);
+
 export function createGitHubClient(token: string): GitHubClient {
   const octokit = getOctokit(token);
   return {
-    async listPullRequests({ owner, repo, state, head }) {
+    async listPullRequests({ owner, repo, state, head, base }) {
       const data = await octokit.paginate(octokit.rest.pulls.list, {
         owner,
         repo,
         state,
         ...(head === undefined ? {} : { head }),
+        ...(base === undefined ? {} : { base }),
         per_page: 100,
       });
       return data as PullRequest[];
@@ -39,8 +42,24 @@ export function createGitHubClient(token: string): GitHubClient {
       });
       return data as BranchInfo;
     },
-    async deleteBranch(owner, repo, branch) {
-      await octokit.rest.git.deleteRef({ owner, repo, ref: `heads/${branch}` });
+    async deleteBranchAtomically({ repositoryId, branch, expectedSha }) {
+      await octokit.graphql(
+        `mutation DeleteBranchAtomically($input: UpdateRefsInput!) {
+          updateRefs(input: $input) { clientMutationId }
+        }`,
+        {
+          input: {
+            repositoryId,
+            refUpdates: [
+              {
+                name: `refs/heads/${branch}`,
+                beforeOid: expectedSha,
+                afterOid: ZERO_OID,
+              },
+            ],
+          },
+        },
+      );
     },
   };
 }

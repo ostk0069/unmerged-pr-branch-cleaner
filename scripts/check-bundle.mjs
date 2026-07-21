@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 
-const artifacts = ["dist/index.js", "dist/index.js.map"];
+const artifacts = ["dist/index.js"];
 
 async function readArtifacts() {
   return Promise.all(
