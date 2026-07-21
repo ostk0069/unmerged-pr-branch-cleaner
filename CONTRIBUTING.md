@@ -5,7 +5,7 @@
 Use Node.js 24. Install and validate with:
 
 ```sh
-corepack enable pnpm
+npm install --global pnpm@11.15.1
 pnpm install --frozen-lockfile
 pnpm run format
 pnpm run package
@@ -14,9 +14,9 @@ pnpm run check-all
 pnpm audit --audit-level=moderate
 ```
 
-The repository pins pnpm 11.15.1, including its registry integrity hash, and verifies the frozen lockfile in CI. Node.js 24's bundled Corepack bootstraps and verifies that package-manager artifact without an additional setup Action. Supply-chain settings reject unreviewed dependency build scripts, packages published within the last 24 hours, trust downgrades, and exotic transitive dependency sources. If an update introduces a lifecycle script, review the exact package version before adding it to `allowBuilds` in `pnpm-workspace.yaml`.
+The repository pins pnpm 11.15.1, including its registry integrity hash, and verifies the frozen lockfile in CI. CI bootstraps pnpm with `pnpm/action-setup` pinned to a full commit SHA; pnpm then downloads the exact integrity-pinned version when the bootstrap version differs. Only that bootstrap command bypasses the minimum release age because it must be able to fetch the pinned package-manager version; dependency installation still enforces the 24-hour delay. Supply-chain settings reject unreviewed dependency build scripts, packages published within the last 24 hours, trust downgrades, and exotic transitive dependency sources. If an update introduces a lifecycle script, review the exact package version before adding it to `allowBuilds` in `pnpm-workspace.yaml`.
 
-Node.js 25 and later do not bundle Corepack. Before upgrading the CI runtime beyond Node.js 24, re-evaluate the bootstrap path and pin any replacement installer by full commit SHA or verified artifact integrity.
+Corepack is not required. When updating the CI bootstrap Action, keep it pinned to a reviewed full commit SHA rather than a mutable tag.
 
 GitHub's published Dependabot compatibility table currently documents pnpm lockfile updates through pnpm 10, so a pnpm 11 lockfile update may fail even though the `npm` package ecosystem remains configured. If that happens, a maintainer should update dependencies locally with the pinned pnpm 11 version and let CI validate the result. Renovate is intentionally not added solely as a fallback, keeping the maintenance and token surface small.
 

@@ -12,13 +12,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d # v6.0.5
+      - name: Bootstrap the integrity-pinned pnpm version
+        env:
+          # Only the package-manager bootstrap bypasses the dependency age gate.
+          npm_config_minimum_release_age: "0"
+        run: pnpm --version | grep --fixed-strings --line-regexp '11.15.1'
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24
-      - name: Enable the integrity-pinned pnpm version with Corepack
-        run: |
-          corepack enable pnpm
-          pnpm --version | grep --fixed-strings --line-regexp '11.15.1'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit --audit-level=moderate
       - name: Validate YAML syntax

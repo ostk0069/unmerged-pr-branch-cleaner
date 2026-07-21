@@ -27,7 +27,7 @@ allowBuilds:
 # Fail closed on incompatible dependency metadata and verify cached contents.
 strictPeerDependencies: true
 engineStrict: true
-pmOnFail: error
+pmOnFail: download
 verifyStoreIntegrity: true
 strictStorePkgContentCheck: true
 savePrefix: ""
