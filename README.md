@@ -1,27 +1,27 @@
 # Unmerged PR Branch Cleaner
 
-Safely deletes same-repository branches associated with pull requests that were closed without being merged.
+Safely removes same-repository branches left behind by pull requests that were closed without being merged.
 
-> [!IMPORTANT]
-> No release exists yet. The examples intentionally use `@<full-commit-sha>` as a non-copyable placeholder. After the first immutable release, replace it with its full 40-character commit SHA. A moving `@v1` tag may be offered for convenience only after release.
+Eligible only when:
 
-## Safety model
+- A same-repository branch is linked to a closed, unmerged PR.
+- Its related closed PRs resolve to one unchanged SHA, and the newest has reached the configured minimum age.
+- It passes the action's preflight checks.
 
-The action paginates all pull requests and branches, then selects only closed, unmerged PRs whose head and base are in the current repository. It excludes forks, missing branches, default/protected branches, ambiguous SHA histories, exclusions, branches that are too young, and every same-repository branch used as either the head or base of an open PR. It repeats the repository, open-PR head/base, protection, exclusion, and SHA checks before any mutation.
+Skipped when detected:
 
-Deletion uses GitHub GraphQL `updateRefs` with `beforeOid` set to the expected closed-PR SHA and a zero `afterOid`. This compare-and-delete prevents a concurrent push from being silently deleted. Mutations are spaced by at least one second. A rate-limit response stops the run immediately without retrying or attempting later branches.
+- A fork head, default or protected branch, excluded branch, ambiguous history, changed branch, or branch used by an open PR as its head or base.
 
-Each branch deletion is atomic, but the entire run is not a transaction. If a later branch fails or encounters a rate limit, earlier successful deletions remain deleted and every remaining branch is reported as `not attempted after fatal error`. Fix the cause and re-run; already missing branches are safely ignored during discovery.
+## Quick start: safe dry-run
 
-`dry-run` defaults to `true`. For actual deletion, every candidate first passes final checks; if the total exceeds `max-deletions`, the action fails before deleting anything.
-
-## Scheduled dry run
+`dry-run` defaults to `true`. This workflow runs at 09:00 JST every Monday and Thursday and can also be started manually:
 
 ```yaml
-name: Delete closed unmerged PR branches
+name: Clean up unmerged PR branches
+
 on:
   schedule:
-    - cron: "0 0 * * 1,4" # Monday and Thursday, 09:00 JST
+    - cron: "0 0 * * 1,4"
   workflow_dispatch:
 
 concurrency:
@@ -36,9 +36,44 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - uses: ostk0069/unmerged-pr-branch-cleaner@<full-commit-sha>
+      - uses: ostk0069/unmerged-pr-branch-cleaner@v1
         with:
           dry-run: "true"
+          minimum-closed-age-days: "7"
+          exclude-branches: |
+            release/**
+            keep-*
+```
+
+For an immutable dependency, replace `@v1` with the full commit SHA of a reviewed release. Do not invent a SHA; copy it from the release commit on GitHub.
+
+## Enable deletion
+
+After reviewing dry-run results, keep the same schedule and filters, grant write access, and explicitly disable dry-run:
+
+```yaml
+name: Clean up unmerged PR branches
+
+on:
+  schedule:
+    - cron: "0 0 * * 1,4"
+  workflow_dispatch:
+
+concurrency:
+  group: unmerged-pr-branch-cleaner
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ostk0069/unmerged-pr-branch-cleaner@v1
+        with:
+          dry-run: "false"
           max-deletions: "20"
           minimum-closed-age-days: "7"
           exclude-branches: |
@@ -46,16 +81,57 @@ jobs:
             keep-*
 ```
 
-After reviewing candidates, set `dry-run: "false"` and grant `contents: write`. Pin third-party actions to a full commit SHA.
+## Inputs
 
-## GitHub App token
+| Name                      | Required | Default        | Description                                                                                                                  |
+| ------------------------- | -------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `github-token`            | No       | `github.token` | Token used to read pull requests, repository data, and refs. Deletion also requires Contents write.                          |
+| `dry-run`                 | No       | `true`         | Reports branches that would be deleted without mutating refs.                                                                |
+| `max-deletions`           | No       | `20`           | Positive deletion cap. A non-dry-run exceeding it fails before any deletion; dry-run only reports that the cap was exceeded. |
+| `exclude-branches`        | No       | empty          | Comma- or newline-separated minimatch patterns that are checked during discovery and again before deletion.                  |
+| `minimum-closed-age-days` | No       | `0`            | Minimum whole-day age of the newest related closed PR.                                                                       |
+| `allow-fork-repositories` | No       | `false`        | Explicitly permits running when the current repository is itself a fork. Review the fork limitation first.                   |
 
-The App needs `Contents: read and write` and `Pull requests: read`. Scope its installation token to only the current repository:
+## Outputs
+
+| Name                 | Type                      | Meaning                                                                                     |
+| -------------------- | ------------------------- | ------------------------------------------------------------------------------------------- |
+| `candidate-count`    | decimal string            | Number of branches that passed preflight checks.                                            |
+| `candidate-branches` | JSON `string[]`           | Branches that passed preflight checks. In dry-run, this is the would-attempt snapshot.      |
+| `deleted-total`      | decimal string            | Total branches deleted.                                                                     |
+| `deleted-count`      | decimal string            | Alias for `deleted-total`.                                                                  |
+| `deleted-branches`   | JSON `string[]`           | Deleted branch names.                                                                       |
+| `skipped-total`      | decimal string            | Total skipped outcomes.                                                                     |
+| `skipped-branches`   | JSON `{branch, reason}[]` | Branches not acted on and the reason.                                                       |
+| `failed-total`       | decimal string            | Total failed outcomes.                                                                      |
+| `failed-branches`    | JSON `{branch, reason}[]` | Branches that could not be safely processed and the reason.                                 |
+| `outputs-truncated`  | boolean string            | Whether one or more detailed JSON outputs were shortened; use total outputs for accounting. |
+
+Output categories are not mutually exclusive. In dry-run, each candidate is also recorded in `skipped-branches` with `dry-run: would delete`. Runs containing only skipped outcomes succeed. Any failed outcome, fatal error, non-dry-run `max-deletions` breach, or fatal rate-limit condition fails the step; branches not attempted after a fatal error are reported as skipped.
+
+Each detailed JSON array has an 80 KiB output budget. When `outputs-truncated` is `true`, use the corresponding total output for accounting.
+
+## Safety model
+
+- The action only considers closed, unmerged PRs whose head and base repositories are the current repository.
+- When detected, the default branch, protected branches, excluded branches, and branches used as the head or base of an open PR are reserved.
+- Multiple closed-PR head SHAs for the same branch are treated as ambiguous history and skipped.
+- The current branch SHA must match the expected closed-PR head SHA. Deletion is conditional on that expected SHA, so a concurrent push is not silently removed.
+- Repository state, branch protection, exclusions, and open-PR head/base usage are checked again before mutation. Open-PR head and base filters are checked immediately before each deletion, subject to the race described under Limitations.
+- A non-dry-run exceeding `max-deletions` stops before the first deletion. Dry-run remains informational.
+- Mutations are paced, and a detected rate limit stops later deletion attempts without retrying.
+- The action fails closed when required repository or pull-request state cannot be verified.
+
+## Advanced authentication with a GitHub App
+
+The default `github.token` is enough for dry-run with read permissions. For deletion, first install a GitHub App on the target repository and grant the App **Contents: Read and write** and **Pull requests: Read** repository permissions.
+
+Then generate a token scoped to only the current repository. The `permission-*` inputs below narrow permissions already granted to the App installation; they cannot elevate an App that lacks those permissions:
 
 ```yaml
 - name: Generate GitHub App token
   id: app-token
-  uses: actions/create-github-app-token@<full-commit-sha>
+  uses: actions/create-github-app-token@v2
   with:
     app-id: ${{ secrets.GH_APP_ID }}
     private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
@@ -64,59 +140,34 @@ The App needs `Contents: read and write` and `Pull requests: read`. Scope its in
     permission-contents: write
     permission-pull-requests: read
 
-- uses: ostk0069/unmerged-pr-branch-cleaner@<full-commit-sha>
+- uses: ostk0069/unmerged-pr-branch-cleaner@v1
   with:
     github-token: ${{ steps.app-token.outputs.token }}
     dry-run: "false"
 ```
 
-Repository rulesets can still block deletion unless the App has an appropriate bypass.
-
-## Inputs
-
-| Name                      | Default        | Description                                                                          |
-| ------------------------- | -------------- | ------------------------------------------------------------------------------------ |
-| `github-token`            | `github.token` | Token used for Pull requests, repository, and ref APIs                               |
-| `dry-run`                 | `true`         | Report candidates without deleting                                                   |
-| `max-deletions`           | `20`           | Positive hard cap for a non-dry-run invocation                                       |
-| `exclude-branches`        | empty          | Comma/newline-separated minimatch glob patterns, checked initially and finally       |
-| `minimum-closed-age-days` | `0`            | Non-negative age required for the newest closed PR associated with the candidate SHA |
-| `allow-fork-repositories` | `false`        | Explicit opt-in to run when the repository itself is a fork                          |
-
-## Outputs
-
-`candidate-count` and `candidate-branches` describe branches that passed all final safety checks; in dry-run these are the would-delete branches. `deleted-count` remains the actual total for compatibility. `deleted-total`, `skipped-total`, and `failed-total` are never truncated.
-
-The JSON detail outputs `candidate-branches`, `deleted-branches`, `skipped-branches`, and `failed-branches` each have a conservative 80 KiB UTF-8 budget. `outputs-truncated` is `true` if any detail array was shortened. Use the total outputs for accounting. The job summary shows at most 50 escaped detail rows.
+Pin both Actions to reviewed full commit SHAs in production. Repository rulesets may still require the App to be configured as an allowed bypass actor.
 
 ## Limitations
 
-- Only refs in the current repository are eligible; cross-repository deletion is not supported.
+- Only branches in the current repository are eligible; cross-repository and fork-head deletion are not supported.
 - Running in a repository that is itself a fork is rejected by default because upstream open-PR relationships may not be visible. Opting in accepts that limitation.
-- Protected branches, default branches, and ruleset-denied refs are not deleted. The token needs Pull requests/Contents read and, for deletion, Contents write.
-- GitHub may delay scheduled workflows. Discovery is sequential and can take time in large repositories.
-- Rate limits fail closed and are not retried. Re-run later rather than adding a long-lived retry loop.
-- Atomic compare-and-delete protects branch contents from changing between the SHA check and deletion. An open PR can still be created with the branch as its base after the immediate filtered open-PR check; GitHub does not offer one transaction spanning PR creation and ref deletion.
-- A deleted and recreated ref at exactly the same name and SHA cannot be distinguished from its previous identity.
+- Branch protection and repository rulesets can deny deletion even when the token has Contents write.
+- A run is not transactional. If a later deletion fails, earlier successful deletions remain deleted.
+- An open PR can be created after the immediate pre-delete check; GitHub does not provide one transaction covering PR creation and ref deletion.
+- A branch deleted and recreated at the same name and SHA cannot be distinguished from its previous identity. Ambiguous branch histories are skipped.
+- Discovery paginates repository branches and pull requests. Large repositories can consume significant API quota and take longer to process.
+- Scheduled workflows run from the default branch, can be delayed by GitHub, and may be disabled in inactive repositories.
+- GitHub Enterprise Server has not been tested.
 
-## CI coverage
+## Contributing
 
-CI runs unit tests with mocked REST and GraphQL clients, including the expected-SHA `updateRefs` delete request, then executes the committed bundle through `uses: ./` as a live, read-only dry run. CI intentionally does not perform an actual branch deletion. A destructive E2E workflow would require a separately approved fixture repository and lifecycle policy.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Development
+## Security
 
-Node.js 24 is required.
-
-```sh
-corepack enable pnpm
-pnpm install --frozen-lockfile
-pnpm run check-all
-```
-
-The package manager is pinned to pnpm 11.15.1. `pnpm run package` regenerates committed `dist/index.js`. `pnpm run licenses` regenerates production dependency notices. See [CONTRIBUTING.md](CONTRIBUTING.md) for the release checklist.
-
-Marketplace users do not install pnpm or project dependencies. GitHub Actions runs the committed `dist/index.js` bundle directly with Node.js 24, so this package-manager choice affects only contributors and CI.
+To report a vulnerability, follow [SECURITY.md](SECURITY.md).
 
 ## License
 
-MIT. Bundled production dependency licenses are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+MIT. Bundled dependency notices are available in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
