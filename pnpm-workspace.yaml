@@ -1,0 +1,33 @@
+packages:
+  - .
+
+registries:
+  default: https://registry.npmjs.org/
+
+# Delay and re-verify dependency resolutions from contributor-authored lockfiles.
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+trustPolicy: no-downgrade
+# This legacy transitive version predates npm provenance. Keep the exception
+# version-scoped so an update is reviewed instead of silently inheriting it.
+trustPolicyExclude:
+  - semver@6.3.1
+trustLockfile: false
+blockExoticSubdeps: true
+
+# Dependency lifecycle scripts are denied unless explicitly reviewed below.
+strictDepBuilds: true
+allowBuilds:
+  # esbuild verifies/downloads its platform binary during install.
+  esbuild@0.28.1: true
+  # unrs-resolver selects its reviewed native binary during install.
+  unrs-resolver@1.12.2: true
+
+# Fail closed on incompatible dependency metadata and verify cached contents.
+strictPeerDependencies: true
+engineStrict: true
+pmOnFail: download
+verifyStoreIntegrity: true
+strictStorePkgContentCheck: true
+savePrefix: ""

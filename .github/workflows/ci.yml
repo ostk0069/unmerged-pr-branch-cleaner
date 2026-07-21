@@ -1,0 +1,62 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d # v6.0.5
+      - name: Bootstrap the integrity-pinned pnpm version
+        env:
+          # Only the package-manager bootstrap bypasses the dependency age gate.
+          npm_config_minimum_release_age: "0"
+        run: pnpm --version | grep --fixed-strings --line-regexp '11.15.1'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=moderate
+      - name: Validate YAML syntax
+        run: ruby -e 'require "yaml"; %w[action.yml .github/workflows/ci.yml .github/dependabot.yml .github/ISSUE_TEMPLATE/bug.yml .github/ISSUE_TEMPLATE/config.yml].each { |file| YAML.load_file(file) }'
+      - name: Run actionlint 1.7.12 with verified release checksum
+        run: |
+          curl --fail --silent --show-error --location \
+            --output "$RUNNER_TEMP/actionlint.tar.gz" \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          printf '%s  %s\n' \
+            '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8' \
+            "$RUNNER_TEMP/actionlint.tar.gz" > "$RUNNER_TEMP/actionlint.sha256"
+          sha256sum --check "$RUNNER_TEMP/actionlint.sha256"
+          tar --extract --gzip --file "$RUNNER_TEMP/actionlint.tar.gz" \
+            --directory "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color=false
+      - run: pnpm run check-all
+      - name: Ensure bundled action is current
+        run: git diff --exit-code -- dist
+      - name: Ensure dependency notices are current
+        run: git diff --exit-code -- THIRD_PARTY_NOTICES.md
+  smoke:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Execute bundled action in dry-run mode
+        uses: ./
+        with:
+          github-token: ${{ github.token }}
+          dry-run: "true"
+          max-deletions: "1"

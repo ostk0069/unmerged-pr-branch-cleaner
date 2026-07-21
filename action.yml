@@ -1,0 +1,55 @@
+name: Unmerged PR Branch Cleaner
+description: Safely delete branches belonging to closed, unmerged pull requests.
+author: ostk0069
+branding:
+  icon: trash-2
+  color: red
+inputs:
+  github-token:
+    description: A token with Pull requests and Contents read access for dry runs; actual deletion requires Contents write.
+    required: false
+    default: ${{ github.token }}
+  dry-run:
+    description: Report branches without deleting them.
+    required: false
+    default: "true"
+  max-deletions:
+    description: Maximum number of branches that one non-dry-run invocation may delete.
+    required: false
+    default: "20"
+  exclude-branches:
+    description: Newline- or comma-separated glob patterns for branches that must never be deleted.
+    required: false
+    default: ""
+  minimum-closed-age-days:
+    description: Minimum age in whole days of the newest matching closed PR.
+    required: false
+    default: "0"
+  allow-fork-repositories:
+    description: Allow execution when the repository itself is a fork.
+    required: false
+    default: "false"
+outputs:
+  deleted-count:
+    description: Number of deleted branches.
+  deleted-branches:
+    description: JSON array of deleted branch names.
+  skipped-branches:
+    description: JSON array of skipped branches and reasons.
+  failed-branches:
+    description: JSON array of failed branches and reasons.
+  deleted-total:
+    description: Total number of deleted branches, including entries omitted from detailed outputs.
+  skipped-total:
+    description: Total number of skipped branches, including entries omitted from detailed outputs.
+  failed-total:
+    description: Total number of failed branches, including entries omitted from detailed outputs.
+  candidate-count:
+    description: Number of branches that passed all safety checks (would-delete count in dry-run).
+  candidate-branches:
+    description: JSON array of candidate branch names, subject to the output size budget.
+  outputs-truncated:
+    description: Whether one or more detailed JSON outputs were truncated.
+runs:
+  using: node24
+  main: dist/index.js

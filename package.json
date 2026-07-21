@@ -1,0 +1,60 @@
+{
+  "name": "unmerged-pr-branch-cleaner",
+  "version": "0.1.0",
+  "description": "Safely delete branches from closed, unmerged pull requests.",
+  "type": "module",
+  "main": "dist/index.js",
+  "private": true,
+  "packageManager": "pnpm@11.15.1+sha512.81350b07e53c9538a02f1f2303b4290fa2d7be04e56e2a970c4cc4b417dc761de196edabd49d55c7dc9580db81007c44143e4e3d7e462b3000d23c255122d065",
+  "scripts": {
+    "package": "rollup --config",
+    "build": "pnpm run package",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --runInBand",
+    "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "test:licenses": "node --test scripts/license-inventory.test.mjs",
+    "check:bundle": "node scripts/check-bundle.mjs",
+    "licenses": "node scripts/generate-licenses.mjs",
+    "licenses:check": "node scripts/generate-licenses.mjs --check",
+    "check:metadata": "node scripts/check-metadata.mjs",
+    "check-all": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm test && pnpm run test:licenses && pnpm run check:bundle && pnpm run licenses:check && pnpm run check:metadata",
+    "all": "pnpm run check-all",
+    "dependencies:check": "pnpm outdated"
+  },
+  "keywords": [
+    "github-actions",
+    "pull-request",
+    "branch",
+    "cleanup"
+  ],
+  "author": "ostk0069",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@actions/core": "^3.0.1",
+    "@actions/github": "^9.1.1",
+    "minimatch": "^10.0.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.31.0",
+    "@jest/globals": "^30.0.5",
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.15",
+    "eslint": "^9.31.0",
+    "globals": "^16.3.0",
+    "jest": "^30.0.5",
+    "prettier": "^3.6.2",
+    "rollup": "^4.46.2",
+    "rollup-plugin-esbuild": "^6.2.1",
+    "ts-jest": "^29.4.1",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0"
+  }
+}
