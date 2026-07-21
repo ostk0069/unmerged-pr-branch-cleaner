@@ -36901,7 +36901,6 @@ function truncateJsonArray(values, budget = OUTPUT_BUDGET_BYTES) {
 }
 function setInitialOutputs() {
   for (const name of [
-    "deleted-count",
     "deleted-total",
     "skipped-total",
     "failed-total",
@@ -36918,7 +36917,6 @@ function setInitialOutputs() {
   setOutput("outputs-truncated", "false");
 }
 function setResultOutputs(result) {
-  setOutput("deleted-count", result.deletedBranches.length);
   setOutput("deleted-total", result.deletedBranches.length);
   setOutput("skipped-total", result.skippedBranches.length);
   setOutput("failed-total", result.failedBranches.length);

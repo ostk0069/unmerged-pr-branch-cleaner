@@ -77,7 +77,6 @@ test("masks token, parses safety inputs, and writes totals", async () => {
       allowForkRepositories: false,
     }),
   );
-  expect(setOutput).toHaveBeenCalledWith("deleted-count", 1);
   expect(setOutput).toHaveBeenCalledWith("deleted-total", 1);
   expect(setOutput).toHaveBeenCalledWith("candidate-count", 1);
   expect(summary.write).toHaveBeenCalled();

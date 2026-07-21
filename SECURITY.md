@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Until the first release, only the latest commit on `main` is supported. After release, the latest major release line will receive security fixes.
+The latest `0.0.x` release is supported. Security fixes are provided only for the newest patch release in that line.
 
 ## Reporting a vulnerability
 

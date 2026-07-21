@@ -45,7 +45,6 @@ export function truncateJsonArray<T>(
 
 function setInitialOutputs(): void {
   for (const name of [
-    "deleted-count",
     "deleted-total",
     "skipped-total",
     "failed-total",
@@ -68,7 +67,6 @@ function setResultOutputs(result: {
   skippedBranches: BranchOutcome[];
   failedBranches: BranchOutcome[];
 }): void {
-  core.setOutput("deleted-count", result.deletedBranches.length);
   core.setOutput("deleted-total", result.deletedBranches.length);
   core.setOutput("skipped-total", result.skippedBranches.length);
   core.setOutput("failed-total", result.failedBranches.length);
