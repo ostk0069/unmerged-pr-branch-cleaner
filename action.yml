@@ -30,8 +30,6 @@ inputs:
     required: false
     default: "false"
 outputs:
-  deleted-count:
-    description: Number of deleted branches.
   deleted-branches:
     description: JSON array of deleted branch names.
   skipped-branches:
@@ -45,9 +43,9 @@ outputs:
   failed-total:
     description: Total number of failed branches, including entries omitted from detailed outputs.
   candidate-count:
-    description: Number of branches that passed all safety checks (would-delete count in dry-run).
+    description: Number of branches that passed the preflight checks.
   candidate-branches:
-    description: JSON array of candidate branch names, subject to the output size budget.
+    description: JSON array of branch names that passed the preflight checks, subject to the output size budget.
   outputs-truncated:
     description: Whether one or more detailed JSON outputs were truncated.
 runs:

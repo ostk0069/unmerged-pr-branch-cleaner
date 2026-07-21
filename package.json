@@ -1,6 +1,6 @@
 {
   "name": "unmerged-pr-branch-cleaner",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Safely delete branches from closed, unmerged pull requests.",
   "type": "module",
   "main": "dist/index.js",

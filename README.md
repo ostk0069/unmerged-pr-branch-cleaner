@@ -14,14 +14,12 @@ Skipped when detected:
 
 ## Quick start: safe dry-run
 
-`dry-run` defaults to `true`. This workflow runs at 09:00 JST every Monday and Thursday and can also be started manually:
+`dry-run` defaults to `true`. Start with a manually dispatched workflow so that every run is intentional while you review the discovered branches:
 
 ```yaml
 name: Clean up unmerged PR branches
 
 on:
-  schedule:
-    - cron: "0 0 * * 1,4"
   workflow_dispatch:
 
 concurrency:
@@ -36,27 +34,28 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - uses: ostk0069/unmerged-pr-branch-cleaner@v1
+      - uses: ostk0069/unmerged-pr-branch-cleaner@v0
         with:
           dry-run: "true"
+          max-deletions: "20"
           minimum-closed-age-days: "7"
           exclude-branches: |
             release/**
             keep-*
 ```
 
-For an immutable dependency, replace `@v1` with the full commit SHA of a reviewed release. Do not invent a SHA; copy it from the release commit on GitHub.
+The seven-day minimum age and `release/**` / `keep-*` exclusions are example policies. Customize or remove them to match your repository. Keep the same values when enabling deletion so the reviewed dry-run and deletion scopes match.
+
+For an immutable dependency, replace `@v0` with the full commit SHA of a reviewed release. Do not invent a SHA; copy it from the release commit on GitHub.
 
 ## Enable deletion
 
-After reviewing dry-run results, keep the same schedule and filters, grant write access, and explicitly disable dry-run:
+After reviewing dry-run results, keep the same inputs, grant write access, and explicitly disable dry-run:
 
 ```yaml
 name: Clean up unmerged PR branches
 
 on:
-  schedule:
-    - cron: "0 0 * * 1,4"
   workflow_dispatch:
 
 concurrency:
@@ -71,7 +70,7 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - uses: ostk0069/unmerged-pr-branch-cleaner@v1
+      - uses: ostk0069/unmerged-pr-branch-cleaner@v0
         with:
           dry-run: "false"
           max-deletions: "20"
@@ -80,6 +79,19 @@ jobs:
             release/**
             keep-*
 ```
+
+## Optional scheduled runs
+
+After validating the workflow manually, you can add a schedule. Schedules are repository policy; choose a cadence appropriate for your project. For example, to run weekly at 00:00 UTC:
+
+```yaml
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+```
+
+Adding a schedule changes only when the workflow runs. Keep the deletion workflow's inputs identical to the reviewed dry-run inputs.
 
 ## Inputs
 
@@ -96,10 +108,9 @@ jobs:
 
 | Name                 | Type                      | Meaning                                                                                     |
 | -------------------- | ------------------------- | ------------------------------------------------------------------------------------------- |
-| `candidate-count`    | decimal string            | Number of branches that passed preflight checks.                                            |
-| `candidate-branches` | JSON `string[]`           | Branches that passed preflight checks. In dry-run, this is the would-attempt snapshot.      |
+| `candidate-count`    | decimal string            | Number of branches that passed the preflight checks.                                        |
+| `candidate-branches` | JSON `string[]`           | Branches that passed the preflight checks. In dry-run, this is the would-attempt snapshot.  |
 | `deleted-total`      | decimal string            | Total branches deleted.                                                                     |
-| `deleted-count`      | decimal string            | Alias for `deleted-total`.                                                                  |
 | `deleted-branches`   | JSON `string[]`           | Deleted branch names.                                                                       |
 | `skipped-total`      | decimal string            | Total skipped outcomes.                                                                     |
 | `skipped-branches`   | JSON `{branch, reason}[]` | Branches not acted on and the reason.                                                       |
@@ -131,7 +142,7 @@ Then generate a token scoped to only the current repository. The `permission-*` 
 ```yaml
 - name: Generate GitHub App token
   id: app-token
-  uses: actions/create-github-app-token@v2
+  uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
   with:
     app-id: ${{ secrets.GH_APP_ID }}
     private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
@@ -140,7 +151,7 @@ Then generate a token scoped to only the current repository. The `permission-*` 
     permission-contents: write
     permission-pull-requests: read
 
-- uses: ostk0069/unmerged-pr-branch-cleaner@v1
+- uses: ostk0069/unmerged-pr-branch-cleaner@v0
   with:
     github-token: ${{ steps.app-token.outputs.token }}
     dry-run: "false"
