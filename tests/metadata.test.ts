@@ -20,7 +20,11 @@ test("GitHub App documentation limits token repository and permissions", async (
   expect(readme).toContain("repositories: ${{ github.event.repository.name }}");
   expect(readme).toContain("permission-contents: write");
   expect(readme).toContain("permission-pull-requests: read");
-  expect(readme).not.toContain("unmerged-pr-branch-cleaner@v1");
+  expect(readme).toContain("unmerged-pr-branch-cleaner@v1");
+  expect(readme).not.toContain("@<full-commit-sha>");
+  expect(readme).toContain(
+    "Pin both Actions to reviewed full commit SHAs in production.",
+  );
 });
 
 test("CI has credential-safe checkout and a local action smoke job", async () => {
